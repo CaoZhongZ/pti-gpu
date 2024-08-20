@@ -33,6 +33,12 @@ def remove_comments(line):
     line = line[0:pos]
   return line
 
+def remove_directive(line):
+  pos = line.find('#')
+  if pos != -1:
+    line = line[0:pos]
+  return line
+
 def get_func_name(callback_struct_name):
   assert callback_struct_name.strip().find("ze_pfn") == 0
   assert callback_struct_name.strip().find("Cb_t") + len("Cb_t") == len(callback_struct_name.strip())
@@ -145,6 +151,7 @@ def find_enums(f, enum_map):
     has_unresolved_values = False
     for i in range(start, end):
       line = remove_comments(lines[i]).strip()
+      line = remove_directive(line)
       if not line:
         continue
       comma_count = get_comma_count(line)
@@ -287,7 +294,7 @@ def gen_api(f, func_list, kfunc_list, group_map):
   f.write("  status = zelTracerSetEnabled(tracer, true);\n")
   f.write("  PTI_ASSERT(status == ZE_RESULT_SUCCESS);\n")
   f.write("}\n")
-  
+
   f.write("\n")
 
 def gen_structure_type_converter(f, enum_map):
@@ -366,7 +373,7 @@ def gen_enter_callback(f, func, command_list_func_list, command_queue_func_list,
       f.write("    }\n")
       f.write("    else {\n")
       f.write("        ze_instance_data.kid = (uint64_t)(-1);\n")
-      f.write("    }\n")     
+      f.write("    }\n")
     else:
       f.write("    " + cb + "(params, global_user_data, instance_user_data); \n")
     f.write("  }\n")
@@ -647,7 +654,7 @@ def gen_enter_callback(f, func, command_list_func_list, command_queue_func_list,
   f.write("    str += \"\\n\";\n")
   f.write("    collector->correlator_->Log(str);\n")
   f.write("  }\n")
-  
+
   f.write("  uint64_t start_time_host = 0;\n")
   f.write("  start_time_host = UniTimer::GetHostTimestamp();\n")
 
@@ -656,11 +663,11 @@ def gen_enter_callback(f, func, command_list_func_list, command_queue_func_list,
 def gen_exit_callback(f, func, submission_func_list, synchronize_func_list_on_enter, synchronize_func_list_on_exit, params, enum_map):
   f.write("  ZeCollector* collector =\n")
   f.write("    reinterpret_cast<ZeCollector*>(global_user_data);\n")
-  
+
   f.write("  uint64_t end_time_host = 0;\n")
 
   f.write("  end_time_host = UniTimer::GetHostTimestamp();\n")
-    
+
   cb = get_kernel_tracing_callback('OnExit' + func[2:])
 
   if ((func in submission_func_list) or (func in synchronize_func_list_on_enter) or (func in synchronize_func_list_on_exit)):
@@ -678,7 +685,7 @@ def gen_exit_callback(f, func, submission_func_list, synchronize_func_list_on_en
     else:
       f.write("    " + cb + "(params, result, global_user_data, instance_user_data); \n")
     f.write("  }\n")
-    
+
     f.write("\n")
 
   f.write("  PTI_ASSERT(collector->correlator_ != nullptr);\n")
@@ -692,7 +699,7 @@ def gen_exit_callback(f, func, submission_func_list, synchronize_func_list_on_en
   f.write("    return;\n")
   f.write("  }\n")
   f.write("\n")
-  
+
   f.write("  uint64_t time;\n")
   f.write("  time = end_time_host - start_time_host;\n")
   f.write("  if (collector->options_.host_timing) {\n")
@@ -763,7 +770,7 @@ def gen_exit_callback(f, func, submission_func_list, synchronize_func_list_on_en
   f.write("    str += \"(0x\" + std::to_string(result) + \")\\n\";\n")
 
 
-  if func == "zeModuleCreate": 
+  if func == "zeModuleCreate":
     f.write("    bool aot = (*(params->pdesc))->format; \n");
     f.write("    unsigned int kcount = 0; \n")
     f.write("    if (zeModuleGetKernelNames(**(params->pphModule), &kcount, NULL) == ZE_RESULT_SUCCESS) {\n")
@@ -927,7 +934,7 @@ def main():
 
   command_queue_func_list = [
       "zeCommandQueueExecuteCommandLists"]
-    
+
   submission_func_list = []
   for func in command_list_func_list:
     submission_func_list.append(func)
@@ -937,7 +944,7 @@ def main():
   synchronize_func_list_on_enter = [
       "zeEventDestroy",
       "zeEventHostReset"]
-    
+
   synchronize_func_list_on_exit = [
       "zeEventHostSynchronize",
       "zeEventQueryStatus",
